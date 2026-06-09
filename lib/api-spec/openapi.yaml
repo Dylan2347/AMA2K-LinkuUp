@@ -1,0 +1,432 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: AMA2K LinkUp Dating App API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: profiles
+    description: User profile operations
+  - name: matches
+    description: Match and swipe operations
+  - name: messages
+    description: Messaging operations
+  - name: discover
+    description: Discovery and feed operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [profiles]
+      summary: List all profiles (admin/debug)
+      responses:
+        "200":
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+    post:
+      operationId: createProfile
+      tags: [profiles]
+      summary: Create a new profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles/me:
+    get:
+      operationId: getMyProfile
+      tags: [profiles]
+      summary: Get the current user's profile
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: No profile found
+    patch:
+      operationId: updateMyProfile
+      tags: [profiles]
+      summary: Update the current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles/{id}:
+    get:
+      operationId: getProfile
+      tags: [profiles]
+      summary: Get a profile by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: Not found
+
+  /discover:
+    get:
+      operationId: getDiscoverFeed
+      tags: [discover]
+      summary: Get profiles to swipe on (discovery feed)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Profiles to swipe on
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+
+  /discover/stats:
+    get:
+      operationId: getDiscoverStats
+      tags: [discover]
+      summary: Get discovery stats (total users, matches today, etc.)
+      responses:
+        "200":
+          description: Discovery statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverStats"
+
+  /swipes:
+    post:
+      operationId: recordSwipe
+      tags: [matches]
+      summary: Record a swipe (like or pass)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwipeInput"
+      responses:
+        "200":
+          description: Swipe recorded, returns match info if matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SwipeResult"
+
+  /likes/received:
+    get:
+      operationId: listLikesReceived
+      tags: [matches]
+      summary: List profiles that liked you (not yet swiped back on)
+      responses:
+        "200":
+          description: Profiles that liked you
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+
+  /matches:
+    get:
+      operationId: listMatches
+      tags: [matches]
+      summary: List all matches for the current user
+      responses:
+        "200":
+          description: List of matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+
+  /matches/{id}:
+    delete:
+      operationId: unmatch
+      tags: [matches]
+      summary: Unmatch with someone
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Unmatched
+
+  /messages/{matchId}:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: Get messages for a match conversation
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message in a match conversation
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Profile:
+      type: object
+      required: [id, name, age, gender, lookingFor, city, bio, photoUrl, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+        lookingFor:
+          type: string
+        city:
+          type: string
+        bio:
+          type: string
+        photoUrl:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    ProfileInput:
+      type: object
+      required: [name, age, gender, lookingFor, city, bio, photoUrl]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        age:
+          type: integer
+          minimum: 18
+        gender:
+          type: string
+        lookingFor:
+          type: string
+        city:
+          type: string
+        bio:
+          type: string
+        photoUrl:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+        lookingFor:
+          type: string
+        city:
+          type: string
+        bio:
+          type: string
+        photoUrl:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+
+    SwipeInput:
+      type: object
+      required: [targetProfileId, direction]
+      properties:
+        targetProfileId:
+          type: integer
+        direction:
+          type: string
+          enum: [like, pass]
+
+    SwipeResult:
+      type: object
+      required: [matched]
+      properties:
+        matched:
+          type: boolean
+        match:
+          $ref: "#/components/schemas/Match"
+
+    Match:
+      type: object
+      required: [id, profileId, matchedProfileId, profile, createdAt]
+      properties:
+        id:
+          type: integer
+        profileId:
+          type: integer
+        matchedProfileId:
+          type: integer
+        profile:
+          $ref: "#/components/schemas/Profile"
+        lastMessage:
+          type: ["string", "null"]
+        lastMessageAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    Message:
+      type: object
+      required: [id, matchId, senderProfileId, content, createdAt]
+      properties:
+        id:
+          type: integer
+        matchId:
+          type: integer
+        senderProfileId:
+          type: integer
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+
+    DiscoverStats:
+      type: object
+      required: [totalUsers, matchesToday, likesReceived, profilesNearby]
+      properties:
+        totalUsers:
+          type: integer
+        matchesToday:
+          type: integer
+        likesReceived:
+          type: integer
+        profilesNearby:
+          type: integer
